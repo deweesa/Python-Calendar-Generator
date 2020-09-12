@@ -1,5 +1,5 @@
 import PyPDF2
-
+from Shift import Shift
 def main():
 	sched_txt = getScheduleText() 
 	parseSchedule(sched_txt)
@@ -12,6 +12,7 @@ def getScheduleText():
 
 def parseSchedule(schedule):
 	day_helper = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]    
+	work_week = []
 	for day in day_helper:
 		print(day)
 		slice_start = schedule.find(day)+len(day)
@@ -21,13 +22,18 @@ def parseSchedule(schedule):
 		
 		work_day = False
 		for piece in contents[:3]:
-			if 'AM' or 'PM' in piece:
-				print(piece + "yo it true")
+			if "AM" in piece or "PM" in piece:
+				#print(piece + "yo it true")
+				#print(type(piece))
 				work_day = True	
 		if work_day is True:
 			print(day + " Is a work Day")
+			work_week.append(Shift(contents[1], contents[2], contents[3]))
+			
 		
 		print("\n")
+	for day in work_week:
+		print(day)
 
 if __name__ =="__main__":
 	main()
