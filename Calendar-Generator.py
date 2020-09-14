@@ -1,8 +1,39 @@
-import PyPDF2
+from __future__ import print_function
 from Shift import Shift
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+import PyPDF2
+import datetime
+import pickle
+import os.path
+import json
+from secrets import  WORK, TEST
+
+SCOPES = ['https://www.googleapis.com/auth/calendar']
+PRIM = 'primary'
+
 def main():
 	sched_txt = getScheduleText() 
-	parseSchedule(sched_txt)
+	work_week = parseSchedule(sched_txt)
+	service = getService()
+	addShiftsToCalen(service, work_week)
+	
+	event = {
+		'summary': 'test',
+		'description': 'testing testing testing',
+		'start': {
+			'dateTime': '2020-09-14T15:00:00-07:00',
+			'timeZone': 'America/Los_Angeles',
+		},
+		'end': {
+			'dateTime': '2020-09-14T18:00:00-07:00',
+			'timeZone': 'America/Los_Angeles',
+		}
+	}
+	
+	event = service.events().insert(calendarId=TEST, body=event).execute()
+	print("Event created")
 
 def getScheduleText():
 	pdfFileObj = open('schedule.pdf', 'rb')
@@ -34,6 +65,40 @@ def parseSchedule(schedule):
 		print("\n")
 	for day in work_week:
 		print(day)
+
+	return work_week
+
+def getService():
+	creds = None
+
+	if os.path.exists('token.pickle'):
+		with open('token.pickle', 'rb') as token:
+			creds = pickle.load(token)
+	if not creds or not creds.valid:
+		if creds and creds.expired and creds.refresh_token:
+			creds.refresh(Request())
+		else:
+			flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+			creds = flow.run_local_server(port=0)
+		with open('token.pickle', 'wb') as token:
+			pickle.dump(creds, token)
+
+	service = build('calendar', 'v3', credentials=creds)
+	return service
+#	now = datetime.datetime.utcnow().isoformat() + 'Z'
+#	print('Getting the upcoming 10 events')
+#	events_result = service.events().list(calendarId=WORK, timeMin=now, maxResults=10, singleEvents = True, orderBy='startTime').execute()
+#	events = events_result.get('items', [])
+	#print(service.calendars.get())
+
+#	if not events:
+#		print('No upcoming events found.')
+#	for event in events:
+#		start = event['start'].get('datetime', event['start'].get('date'))
+#		print(start, event['summary'])
+
+def addShiftsToCalen(service, work_week):
+	print("Work in Progress")
 
 if __name__ =="__main__":
 	main()
