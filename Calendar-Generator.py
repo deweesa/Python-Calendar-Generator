@@ -8,32 +8,18 @@ import datetime
 import pickle
 import os.path
 import json
-from secrets import  WORK, TEST
+# secrets holds the calendarIds of my Work calendar 
+# and calendar used for testing, figure it shouldn't be on github
+from secrets import  WORK, TEST 
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-PRIM = 'primary'
+#PRIM = 'primary'
 
 def main():
 	sched_txt = getScheduleText() 
 	work_week = parseSchedule(sched_txt)
 	service = getService()
 	addShiftsToCalen(service, work_week)
-	
-	event = {
-		'summary': 'test',
-		'description': 'testing testing testing',
-		'start': {
-			'dateTime': '2020-09-14T15:00:00-07:00',
-			'timeZone': 'America/Los_Angeles',
-		},
-		'end': {
-			'dateTime': '2020-09-14T18:00:00-07:00',
-			'timeZone': 'America/Los_Angeles',
-		}
-	}
-	
-	event = service.events().insert(calendarId=TEST, body=event).execute()
-	print("Event created")
 
 def getScheduleText():
 	pdfFileObj = open('schedule.pdf', 'rb')
@@ -59,7 +45,9 @@ def parseSchedule(schedule):
 				work_day = True	
 		if work_day is True:
 			print(day + " Is a work Day")
+#	!!!Deprecated - Going to change the order of Shift creation and converting from shift date/time to rfc date/time
 			work_week.append(Shift(contents[1], contents[2], contents[3]))
+			print(contents[3])
 			
 		
 		print("\n")
@@ -98,7 +86,42 @@ def getService():
 #		print(start, event['summary'])
 
 def addShiftsToCalen(service, work_week):
-	print("Work in Progress")
+	events = []
+	time_template = {}
+	event = {}
+	time_template['timeZone'] = 'America/Los_Angeles'
+#	event_template['summary'] = 'Work'
+	for day in work_week:
+		work_title = 'Work'
+		if day.position is not None:
+			work_title += ' - ' + day.position
+		event['summary'] = work_title
+		event['start'] = time_template.copy()
+		event['start']['dateTime'] = day.date + 'T' + day.start_t	
+		event['end'] = time_template.copy()
+		print(time_template)
+		event['end']['dateTime'] = day.date + 'T' + day.end_t
+		print(json.dumps(event))		
+		event_json = json.dumps(event)
+		event = service.events().insert(calendarId=TEST, body = event_json).execute()
+		print("Event Created")
+
+def testingStuff(service):
+	event = {
+		'summary': 'test',
+		'description': 'testing testing testing',
+		'start': {
+			'dateTime': '2020-09-14T15:00:00-07:00',
+			'timeZone': 'America/Los_Angeles',
+		},
+		'end': {
+			'dateTime': '2020-09-14T18:00:00-07:00',
+			'timeZone': 'America/Los_Angeles',
+		}
+	}
+	
+	event = service.events().insert(calendarId=TEST, body=event).execute()
+	print("Event created")
 
 if __name__ =="__main__":
 	main()
