@@ -3,6 +3,7 @@ from Shift import Shift
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+import googleapiclient.errors
 import PyPDF2
 import datetime
 import pickle
@@ -22,7 +23,7 @@ def main():
 	addShiftsToCalen(service, work_week)
 
 def getScheduleText():
-	pdfFileObj = open('schedule.pdf', 'rb')
+	pdfFileObj = open('schedule21.pdf', 'rb')
 	pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
 	pageObj = pdfReader.getPage(0)
 	return pageObj.extractText()  
@@ -86,25 +87,29 @@ def getService():
 #		print(start, event['summary'])
 
 def addShiftsToCalen(service, work_week):
-	events = []
-	time_template = {}
-	event = {}
-	time_template['timeZone'] = 'America/Los_Angeles'
-#	event_template['summary'] = 'Work'
+	f = open('eventTemplate.json')
+
+	event_template = json.load(f)
 	for day in work_week:
-		work_title = 'Work'
+		work = "Work"
 		if day.position is not None:
-			work_title += ' - ' + day.position
-		event['summary'] = work_title
-		event['start'] = time_template.copy()
-		event['start']['dateTime'] = day.date + 'T' + day.start_t	
-		event['end'] = time_template.copy()
-		print(time_template)
-		event['end']['dateTime'] = day.date + 'T' + day.end_t
-		print(json.dumps(event))		
-		event_json = json.dumps(event)
-		event = service.events().insert(calendarId=TEST, body = event_json).execute()
-		print("Event Created")
+			work += " - " + day.position
+		event = {
+			'summary': work,
+			'start': {
+				'dateTime': day.date+'T'+day.start_t,
+				'timeZone': 'America/Los_Angeles',
+			},
+			'end': {
+				'dateTime': day.date+'T'+day.end_t,
+				'timeZone': 'America/Los_Angeles',
+			}
+		}	
+		
+		try:		
+			event = service.events().insert(calendarId=WORK, body=event).execute()
+		except googleapiclient.errors.HttpError as err:
+			print(err)
 
 def testingStuff(service):
 	event = {
