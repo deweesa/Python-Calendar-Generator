@@ -9,21 +9,46 @@ import datetime
 import pickle
 import os.path
 import json
+import sys
 # secrets holds the calendarIds of my Work calendar 
 # and calendar used for testing, figure it shouldn't be on github
-from secrets import  WORK, TEST 
+from secrets import  WORK, TEST, PATH 
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 #PRIM = 'primary'
 
 def main():
-	sched_txt = getScheduleText() 
-	work_week = parseSchedule(sched_txt)
-	service = getService()
-	addShiftsToCalen(service, work_week)
+	#Might want to change to getopt, instead of naive flag check. 
+	if len(sys.argv) > 1:
+		if sys.argv[1] in ['-d', '--debug']:
+			debug = True
+			calendar = TEST
+	else:
+		debug = False
+		calendar = WORK
 
-def getScheduleText():
-	pdfFileObj = open('schedule21.pdf', 'rb')
+	service = getService()
+
+	if not debug:
+		files = os.listdir(PATH)
+		for f in files:
+			sched_txt = getScheduleText(os.path.join(PATH, f))
+			work_week = parseSchedule(sched_txt)
+			printShifts(work_week)
+			addShiftsToCalen(service, work_week, calendar)
+			#os.remove(os.path.join(PATH, f))
+
+	else:
+		#		printShifts(work_week)
+		files = os.listdir(PATH)
+		for f in files:
+			sched_txt = getScheduleText(os.path.join(PATH, f))
+			work_week = parseSchedule(sched_txt)
+			printShifts(work_week)
+			addShiftsToCalen(service, work_week, calendar)
+
+def getScheduleText(path):
+	pdfFileObj = open(path, 'rb')
 	pdfReader = PyPDF2.PdfFileReader(pdfFileObj)
 	pageObj = pdfReader.getPage(0)
 	return pageObj.extractText()  
@@ -32,28 +57,24 @@ def parseSchedule(schedule):
 	day_helper = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]    
 	work_week = []
 	for day in day_helper:
-		print(day)
+#		print(day)
 		slice_start = schedule.find(day)+len(day)
-#		print(schedule[slice_start:])
 		contents = schedule[slice_start:].split("\n");
-		print(contents[:8])
+#		print(contents[:8])
 		
 		work_day = False
 		for piece in contents[:3]:
 			if "AM" in piece or "PM" in piece:
-				#print(piece + "yo it true")
-				#print(type(piece))
 				work_day = True	
 		if work_day is True:
-			print(day + " Is a work Day")
-#	!!!Deprecated - Going to change the order of Shift creation and converting from shift date/time to rfc date/time
-			work_week.append(Shift(contents[1], contents[2], contents[3]))
-			print(contents[3])
+#			print(day + " Is a work Day")
+			work_week.append(Shift(contents[1], contents[2], contents[3], contents[6]))
+#			print(contents[3])
 			
 		
-		print("\n")
-	for day in work_week:
-		print(day)
+#		print("\n")
+#	for day in work_week:
+#		print(day)
 
 	return work_week
 
@@ -74,19 +95,8 @@ def getService():
 
 	service = build('calendar', 'v3', credentials=creds)
 	return service
-#	now = datetime.datetime.utcnow().isoformat() + 'Z'
-#	print('Getting the upcoming 10 events')
-#	events_result = service.events().list(calendarId=WORK, timeMin=now, maxResults=10, singleEvents = True, orderBy='startTime').execute()
-#	events = events_result.get('items', [])
-	#print(service.calendars.get())
 
-#	if not events:
-#		print('No upcoming events found.')
-#	for event in events:
-#		start = event['start'].get('datetime', event['start'].get('date'))
-#		print(start, event['summary'])
-
-def addShiftsToCalen(service, work_week):
+def addShiftsToCalen(service, work_week, calendar):
 	f = open('eventTemplate.json')
 
 	event_template = json.load(f)
@@ -107,9 +117,13 @@ def addShiftsToCalen(service, work_week):
 		}	
 		
 		try:		
-			event = service.events().insert(calendarId=WORK, body=event).execute()
+			event = service.events().insert(calendarId=calendar, body=event).execute()
 		except googleapiclient.errors.HttpError as err:
 			print(err)
+
+def printShifts(work_week):
+	for day in work_week:
+		print(day)
 
 def testingStuff(service):
 	event = {
@@ -127,6 +141,14 @@ def testingStuff(service):
 	
 	event = service.events().insert(calendarId=TEST, body=event).execute()
 	print("Event created")
+
+def scanDirectory():
+	files = os.listdir(PATH)
+	
+	for f in files:
+		print(f)
+	
+	os.remove(os.path.join(PATH, 'test.txt'))
 
 if __name__ =="__main__":
 	main()

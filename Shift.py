@@ -4,6 +4,11 @@ class Shift:
 		self.start_t = self.__toRFCTime(start_t) 
 		self.end_t = self.__toRFCTime(end_t)
 		self.position = position
+		if self.position is not None:
+			if len(self.position.split("/")) == 2:
+				self.position = self.position.split("/")[1]
+			else:
+				self.position = None
 
 	def __toRFCTime(self, time):
 		time_comps = time.split()
@@ -36,5 +41,5 @@ class Shift:
 	def __str__(self):
 		result =  self.date + " Start Time: " + self.start_t + " End Time: " + self.end_t 
 		if self.position is not None:
-			result += " Position " + result
+			result = self.position + ' ' + result
 		return result
